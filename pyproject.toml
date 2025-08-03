@@ -1,0 +1,31 @@
+[project]
+name = "BRS"
+version = "0.1.0"
+description = "Default template for PDM package"
+authors = [
+    {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
+]
+dependencies = []
+requires-python = "==3.12.*"
+readme = "README.md"
+license = {text = "MIT"}
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "black>=25.1.0",
+    "ruff>=0.12.5",
+]
+
+[tool.pdm]
+distribution = false
+
+[tool.pdm.scripts]
+start =  { cmd = "python -m my_project.main", env = { PYTHONPATH = "src" } }
+test = "pytest"
+ruff = "ruff check src tests"
+black = "black src tests"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
