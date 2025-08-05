@@ -5,7 +5,7 @@ description = "Default template for PDM package"
 authors = [
     {name = "Ivan Shebanov", email = "vanamokanov8@gmail.com"},
 ]
-dependencies = []
+dependencies = ["boto3>=1.40.2", "python-dotenv>=1.1.1", "s3fs>=0.4.2", "pyarrow>=21.0.0", "pyspark>=4.0.0", "seaborn>=0.13.2"]
 requires-python = "==3.12.*"
 readme = "README.md"
 license = {text = "MIT"}
@@ -15,16 +15,23 @@ dev = [
     "pytest>=8.4.1",
     "black>=25.1.0",
     "ruff>=0.12.5",
+    "kaggle>=1.7.4.5",
+    "pandas>=2.3.1",
+    "ipykernel>=6.30.1",
 ]
 
 [tool.pdm]
 distribution = false
 
+[tool.pdm.build]
+includes = ["src/brs"]
+
 [tool.pdm.scripts]
-start =  { cmd = "python -m my_project.main", env = { PYTHONPATH = "src" } }
+start =  { cmd = "python -m main", env = { PYTHONPATH = "brs" } }
+google_book_enrichment = { cmd = "python -m scripts.run_dataset_enrichment", env = { PYTHONPATH = "brs" } }
 test = "pytest"
-ruff = "ruff check src tests"
-black = "black src tests"
+ruff = "ruff check brs tests"
+black = "black brs tests"
 
 [build-system]
 requires = ["pdm-backend"]
