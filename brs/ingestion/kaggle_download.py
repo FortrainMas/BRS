@@ -55,7 +55,7 @@ def download_kaggle_dataset():
             s3.upload_file(str(file), bucket, key)
 
         s3.close()
-    except e as e:
+    except Exception as e:
         logger.error(e)
         logger.error("Failed to upload to S3")
 
