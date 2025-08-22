@@ -4,3 +4,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .pdm-python
+.env
+data/
+artifacts/
+
+spark&minio/minio-data/
+spark&minio/spark-conf/
