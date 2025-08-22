@@ -1,0 +1,45 @@
+services:
+  minio:
+    image: quay.io/minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./minio-data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+
+  spark:
+    build:
+      context: .
+      dockerfile: dockerfile.spark
+    container_name: spark
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    environment:
+      - SPARK_MODE=master
+      - HADOOP_HOME=/opt/fake-hadoop
+    volumes:
+      - ./core-site.xml:/opt/bitnami/spark/conf/core-site.xml:ro
+      - ./fake-hadoop:/opt/fake-hadoop:ro
+    
+
+  spark-worker:
+    build:
+      context: .
+      dockerfile: dockerfile.spark
+    container_name: spark-worker
+    depends_on:
+      - spark
+    environment:
+      - SPARK_MODE=master
+      - HADOOP_HOME=/opt/fake-hadoop
+    volumes:
+      - ./core-site.xml:/opt/bitnami/spark/conf/core-site.xml:ro
+      - ./fake-hadoop:/opt/fake-hadoop:ro
+    ports:
+      - "8081:8081"
