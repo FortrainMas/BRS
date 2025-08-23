@@ -1,9 +1,11 @@
 import os
 import json
 import logging
+import asyncio
 
+import aiohttp
+from tqdm.asyncio import tqdm_asyncio
 import pandas as pd
-import requests
 from pathlib import Path
 
 from .load_dataset import LoadDataset
@@ -20,23 +22,18 @@ class GoogleBooksEnrichment(LoadDataset):
                  save_rate:int = 100, 
                  max_results:int = 10,
                  limit:int|None = None,
-                 reattempts:int = 10):
+                 batch_size:int = 5):
         
         self.save_rate = save_rate
         self.max_results = max_results
         self.limit = limit
         self.download = download
-        self.reattemps = reattempts
+        self.batch_size = batch_size
 
-        self.total_json : list[dict] = []
-        self.json_artifacts_path: str = os.path.join(config.root_dir, "artifacts", "google_books.json")
         self.df_path = os.path.join(config.root_dir, "data", "raw", "kaggle-books", "books_enriched.csv")
 
     def save(self, df: pd.DataFrame):
-        with open(self.json_artifacts_path, "w") as f:
-                    f.write(json.dumps(self.total_json))
         df.to_csv(self.df_path, index=False)
-        logger.info("Dataframe iteration saved")
 
     def load_saved_data(self) -> pd.DataFrame:
         try:
@@ -48,7 +45,60 @@ class GoogleBooksEnrichment(LoadDataset):
             df["enriched"] = False
             return df
         
+    async def fetch_book(self, session: aiohttp.ClientSession, author:str, title:str) -> list[dict]:
+        if not author:
+            url = f'https://www.googleapis.com/books/v1/volumes?q=intitle:"{title}"&maxResults={self.max_results}'
+        else:
+            url = f'https://www.googleapis.com/books/v1/volumes?q=inauthor:"{author}"+intitle:"{title}"&maxResults={self.max_results}'
+
+        reattempt = 30
+        while reattempt:
+            async with session.get(url) as resp:
+                try:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return data.get("items", [])
+                    elif resp.status==409:
+                        await asyncio.sleep(1)
+                        reattempt-=1
+                    else:
+                        return []
+                except Exception:
+                    return []
+            
+    async def enrich_batch(self, session: aiohttp.ClientSession, batch_df:pd.DataFrame) -> bool:
+        tasks = [
+            self.fetch_book(session, row["Book-Author"], row["Book-Title"])
+            for _, row in batch_df.iterrows()
+        ]
+        results = await asyncio.gather(*tasks)
+
+        for idx, items in zip(batch_df.index, results):
+            description = None
+            genre = None
+            for item in items:
+                vol = item.get("volumeInfo", {})
+                if vol.get("description"):
+                    if not description or len(vol["description"]) > len(description):
+                        description = vol["description"]
+                if vol.get("categories") and not genre:
+                    genre = vol["categories"]
+
+            if genre is not None and description is not None:
+                logger.info("We've got some results at least")
+            batch_df.at[idx, "description"] = description
+            batch_df.at[idx, "category"] = genre
+            batch_df.at[idx, "enriched"] = True
+        return True
+    
     def load_dataset(self, dataset_name: str) -> pd.DataFrame:
+        if dataset_name != "books":
+            raise ValueError("Invalid dataset name: must be 'books'")
+
+        df = self.load_saved_data()
+        return df
+
+    async def load_dataset_async(self, dataset_name: str) -> pd.DataFrame:
         if dataset_name != "books":
             raise ValueError("Invalid dataset name: must be 'books'")
 
@@ -58,57 +108,19 @@ class GoogleBooksEnrichment(LoadDataset):
         if not self.download or len(false_indices) == 0:
             return df
 
-        reattempts = self.reattemps
-
         start_idx = false_indices[0]
-        for i, (idx, row) in enumerate(df.loc[start_idx:start_idx + self.limit].iterrows()):
-            if i % self.save_rate == 0:
-                self.save(df)
-                
-            author = row["Book-Author"]
-            title = row["Book-Title"]
-            
-            if not author:
-                url = f'https://www.googleapis.com/books/v1/volumes?q=intitle:"{title}"&maxResults={self.max_results}'
-            else:
-                url = f'https://www.googleapis.com/books/v1/volumes?q=inauthor:"{author}"+intitle:"{title}"&maxResults={self.max_results}'
-
-            try:
-                resp = requests.get(url)
-                if resp.status_code == 200:
-                    reattempts = self.reattemps
-                    data = resp.json()
-                    items = data.get("items", [])
-                    self.total_json.append(items)
-
-                    description = None
-                    genre = None
-                    
-                    for item in items:
-                        volume_info = item.get("volumeInfo")
-                        volume_description = volume_info.get("description")
-                        if volume_description:
-                            if not description:
-                                description = volume_description
-                            elif volume_info.get("title") == title and len(volume_description) > len(description):
-                                description = volume_description
-                        if not genre and volume_info.get("categories"):
-                            genre = volume_info.get("categories")
-
-                    df.at[idx, "description"] = description
-                    df.at[idx, "category"] = genre
-                    df.at[idx, "enriched"] = True
-                else:
-                    logger.warning(f"Response status code is not 200. {resp.status_code}")
-                    logger.warning(f"{resp.text}")
-                    raise Exception()
-                
-            except Exception as e:
-                df.at[idx, "enriched"] = True
-                logger.warning(f"Query failed for {title} by {author}; {e}")
-                reattempts -= 1
-                if reattempts == 0:
-                    logger.error(f"Books dataset enrichment stopped due to lack of reattempts")
+        if self.limit is not None:
+            residual_dataframe = df.loc[start_idx:start_idx + self.limit - 1]
+        else:
+            residual_dataframe = df.loc[start_idx:]
+        
+        async with aiohttp.ClientSession() as session:
+            for start in tqdm_asyncio(range(0, len(residual_dataframe), self.batch_size)):
+                if start % self.save_rate == 0:
+                    self.save(df)
+                batch_df = residual_dataframe.iloc[start:start+self.batch_size]
+                if not await self.enrich_batch(session, batch_df):
+                    logger.info("Dataset enrichment stopped. Aborting... It is due to only empty responses in the batch. If your batch is too small it be accidental. It is needed because of risk of being blocked by Google.")
                     break
 
         logger.info("Dataset enrichment successfully finished")
