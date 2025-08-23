@@ -1,2 +1,5 @@
 from .users_transformations.country_fe import CountryFeature
 from .users_transformations.age_fe import AgeGroupsFeature
+from .books_transformations.popularity_fe import PopularityFeature
+from .books_transformations.rating_fe import RatingFeature
+from .books_transformations.elderity_fe import ElderityFeature
