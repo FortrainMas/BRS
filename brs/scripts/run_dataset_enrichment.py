@@ -1,4 +1,7 @@
-import brs.ingestion.google_books_enrichment as google_books_enrichment
+import asyncio
+from brs.ingestion import google_books_enrichment
 
 if __name__ == "__main__":
-    google_books_enrichment.GoogleBooksEnrichment(limit=100).load_dataset("books")
+    enricher = google_books_enrichment.GoogleBooksEnrichment(limit=10000, batch_size=10)
+    df = asyncio.run(enricher.load_dataset_async("books"))
+    print("Enrichment finished, total rows:", len(df))
