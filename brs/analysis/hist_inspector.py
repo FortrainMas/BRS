@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 from .analysis import DataInspectionStrategy
 
 class HistogramInspection(DataInspectionStrategy):
-    def __init__(self, column_name, bins=10, title=None, dropna=False, figsize: tuple[int, int]=(8, 5)):
+    def __init__(self, column_name, bins=10, title=None, discrete=False, figsize: tuple[int, int]=(8, 5)):
         super().__init__()
         self.column_name = column_name
         self.bins = bins
         self.title = title
-        self.dropna = dropna
+        self.discrete = discrete
         self.figsize = figsize
 
     def inspect(self, df: pd.DataFrame):
@@ -18,11 +18,9 @@ class HistogramInspection(DataInspectionStrategy):
             raise ValueError(f"Column '{self.column_name}' not found in the dataframe.")
 
         data = df[self.column_name]
-        if self.dropna:
-            data = data.dropna()
 
         plt.figure(figsize=self.figsize)
-        sns.histplot(data, bins=self.bins, kde=False, color=sns.color_palette("Set2")[0])
+        sns.histplot(data, bins=self.bins, discrete=self.discrete, kde=False, color=sns.color_palette("Set2")[0])
         plt.xlabel(self.column_name)
         plt.ylabel("Frequency")
         if self.title:
