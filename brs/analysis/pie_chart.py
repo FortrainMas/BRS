@@ -5,12 +5,13 @@ import matplotlib.pyplot as plt
 from .analysis import DataInspectionStrategy
 
 class PieChartInspection(DataInspectionStrategy):
-    def __init__(self, column_name, top_n=8, title=None, dropna=False):
+    def __init__(self, column_name, top_n=8, title=None, dropna=False, figsize:tuple[int, int]=(6, 6)):
         super().__init__()
         self.column_name = column_name
         self.top_n = top_n
         self.title = title
         self.dropna = dropna
+        self.figsize = figsize
 
     def inspect(self, df: pd.DataFrame):        
         if self.column_name not in df.columns:
@@ -26,7 +27,7 @@ class PieChartInspection(DataInspectionStrategy):
         
         if others_count > 0:
             top_counts = pd.concat([top_counts, pd.Series({"others": others_count})])
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=self.figsize)
         plt.pie(
             top_counts.values,
             labels=top_counts.index,
