@@ -1,2 +1,4 @@
 from .users_preprocessing import UsersPreprocessingStrategy
 from .books_preprocessing import BooksPreprocessingStrategy
+
+from .raw_dataset_preprocessing import UsersClarifyStrategy, BooksClarifyStrategy
