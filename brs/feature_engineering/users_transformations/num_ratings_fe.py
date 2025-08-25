@@ -8,7 +8,6 @@ class NumRatingsFeature(FeatureEngineeringStrategy):
 
     def apply_transformation(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        print("GFY")
 
         ratings_df = self.ratings_df.groupby("User-ID")["Book-Rating"].count()
 
