@@ -31,5 +31,5 @@ class AgeGroupsFeature(FeatureEngineeringStrategy):
         bins = [0, 12, 17, 29, 44, 59, 200]
         labels = ["0-12", "13-17", "18-29", "30-44", "45-59", "60+"]
 
-        df["Age_group"] = pd.cut(df["Age"], bins=bins, labels=labels, include_lowest=True)
+        df["Age-Group"] = pd.cut(df["Age"], bins=bins, labels=labels, include_lowest=True)
         return df

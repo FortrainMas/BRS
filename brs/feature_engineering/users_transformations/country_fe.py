@@ -20,7 +20,7 @@ class CountryFeature(FeatureEngineeringStrategy):
         if "Location" not in df.columns:
             raise ValueError("Column 'Location' not found in the dataframe.")
 
-        df["Countries"] = df["Location"].apply(
+        df["Country"] = df["Location"].apply(
             lambda x: x.split(" ")[-1].rstrip(",") or None
         )
         return df

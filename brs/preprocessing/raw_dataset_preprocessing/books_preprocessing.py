@@ -7,10 +7,10 @@ from brs.feature_engineering import PopularityFeature, RatingFeature, ElderityFe
 
 
 class BooksClarifyStrategy(PreprocessingStrategy):
-    def __init__(self, ratings_df: pd.DataFrame, clear_users_df: pd.DataFrame):
+    def __init__(self, ratings_df: pd.DataFrame, clear_users_df: pd.DataFrame, train: bool = True):
         self.ratings_df = ratings_df
         self.clear_users_df = clear_users_df
-        
+        self.train = train
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         data_books = df.copy()
@@ -23,9 +23,11 @@ class BooksClarifyStrategy(PreprocessingStrategy):
         data_users = UsersClarifyStrategy(ratings_df = data_ratings).preprocess(data_users)
         data_ratings = data_ratings[data_ratings["User-ID"].isin(data_users["User-ID"])]
 
+        
         data_books = BooksPreprocessingStrategy().preprocess(data_books)
-        data_books = PopularityFeature(ratings_df=data_ratings).apply_transformation(data_books)
-        data_books = RatingFeature(ratings_df=data_ratings).apply_transformation(data_books)
         data_books = ElderityFeature(ratings_df=data_ratings).apply_transformation(data_books)
+        if self.train:
+            data_books = PopularityFeature(ratings_df=data_ratings).apply_transformation(data_books)
+            data_books = RatingFeature(ratings_df=data_ratings).apply_transformation(data_books)
 
-        return data_ratings
+        return data_books
