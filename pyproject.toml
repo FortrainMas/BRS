@@ -30,7 +30,7 @@ includes = ["src/brs"]
 start =  { cmd = "python -m main", env = { PYTHONPATH = "brs" } }
 google_book_enrichment = { cmd = "python -m scripts.run_dataset_enrichment", env = { PYTHONPATH = "brs" } }
 mlflow = { cmd = "mlflow server --host 127.0.0.1 --port 8080" }
-test = "pytest"
+test = { cmd = "pytest", env = { PYTHONPATH = "." } }
 ruff = "ruff check brs tests"
 black = "black brs tests"
 

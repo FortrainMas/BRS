@@ -6,6 +6,13 @@ class LinRegPipeline:
     def __init__(self):
         pass
 
+    def top_dummies(self, df: pd.DataFrame, col: str, top_n: int = 100, prefix: str = None) -> pd.DataFrame:
+        prefix = prefix or col
+        top = df[col].value_counts().nlargest(top_n).index
+        df[col] = df[col].where(df[col].isin(top), other="Other")
+        return pd.get_dummies(df, columns=[col], prefix=prefix, drop_first=True)
+
+
     def fit(
         self, 
         data_users: pd.DataFrame, 
@@ -23,18 +30,20 @@ class LinRegPipeline:
         ).preprocess(self.data_books)
 
 
-        self.data_users.drop(["Location", "Age"], axis=1, inplace=True)
-        self.data_users["Age-Group"].fillna("Unknown", inplace=True)
-        self.data_users = pd.get_dummies(self.data_users, columns=["Age-Group"], prefix="Age-Group", drop_first=True)
-        self.data_users["Country"].fillna("Unknown", inplace=True)
-        self.data_users = pd.get_dummies(self.data_users, columns=["Country"], prefix="Country", drop_first=True)
+        data_users.drop(["Location", "Age"], axis=1, inplace=True)
+        data_users["Age-Group"] = data_users["Age-Group"].cat.add_categories(["Unknown"])
+        data_users["Age-Group"] = data_users["Age-Group"].fillna("Unknown")
+        data_users = pd.get_dummies(data_users, columns=["Age-Group"], prefix="Age-Group", drop_first=True)
+        data_users["Country"] = data_users["Country"].fillna("Unknown")
+        data_users = pd.get_dummies(data_users, columns=["Country"], prefix="Country", drop_first=True)
+
+        data_books.drop(["Year-Of-Publication", "Book-Title", "Same-Book"], axis=1, inplace=True)
+        data_books["Book-Author"] = data_books["Book-Author"].fillna("Unknown")
+        data_books["Publisher"] = data_books["Publisher"].fillna("Unknown")
+        data_books = self.top_dummies(data_books, "Book-Author", top_n=100, prefix="Book-Author")
+        data_books = self.top_dummies(data_books, "Publisher", top_n=100, prefix="Publisher")
 
 
-        self.data_books.drop(["Year-Of-Publication", "Book-Title", "Same-Book"], axis=1, inplace=True)
-        self.data_books["Book-Author"].fillna("Unknown", inplace=True)
-        self.data_books = pd.get_dummies(self.data_books, columns=["Book-Author"], prefix="Book-Author", drop_first=True)
-        self.data_books["Publisher"].fillna("Unknown", inplace=True)
-        self.data_books = pd.get_dummies(self.data_books, columns=["Publisher"], prefix="Publisher", drop_first=True)
         cols = [
             "Popularity-Edition",
             "Popularity-Edition-Log",
@@ -43,11 +52,8 @@ class LinRegPipeline:
             "Rating-Edition",
             "Rating-Book",
         ]
-
-        
-        self.data_books_exploded = self.data_books.explode("ISBN")
-
-        self.data_books[cols] = self.data_books[cols].fillna(-1)
+        for col in cols:
+            data_books[col] = data_books[col].fillna(-1)
 
         return self
 
