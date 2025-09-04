@@ -3,7 +3,6 @@ from pandas.testing import assert_frame_equal
 
 from brs.preprocessing.pipeline import RemoveAgeDropouts
 
-
 def test_remove_dropouts_default_thresholds():
     df = pd.DataFrame({
         "User-ID": [1, 2, 3, 4],
