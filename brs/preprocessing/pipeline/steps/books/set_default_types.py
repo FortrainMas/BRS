@@ -37,15 +37,15 @@ class SetDefaultTypes(DataframePipelineStep):
 
         df.drop(columns=["Image-URL-S", "Image-URL-M", "Image-URL-L"], inplace=True, errors="ignore")
 
-        df = df[df["Year-Of-Publication"].astype(str).str.isnumeric()]
-        df["Year-Of-Publication"] = df["Year-Of-Publication"].astype(int)
+        df = df[pd.to_numeric(df["Year-Of-Publication"], errors="coerce").notna()]
+        df["Year-Of-Publication"] = df["Year-Of-Publication"].astype("Float64")
 
         df = df.astype({
             "ISBN": "string",
             "Book-Title": "string",
             "Book-Author": "string",
             "Publisher": "string",
-            "Year-Of-Publication": "Int64"
+            "Year-Of-Publication": "Float64"
             })
 
         return df
